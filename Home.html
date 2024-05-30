@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Weather App</title>
+  <link
+    href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"
+    rel="stylesheet"
+  />
+  <!-- Add Splide CSS -->
+   <link rel="stylesheet" href="https://unpkg.com/@splidejs/splide/dist/css/splide.min.css">
+  <style>
+
+    body{
+      font-family: 'Trebuchet MS', 'Lucida Sans Unicode', 'Lucida Grande', 'Lucida Sans', Arial, sans-serif;
+    }
+    /* Adjust Splide container size */
+    .splide__track {
+      display: flex;
+    }
+    .splide__list {
+      width: 100%;
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      scrollbar-width: hide;
+    }
+    .splide__slide {
+      flex: 0 0 auto;
+      scroll-snap-align: start;
+    }
+  </style>
+</head>
+<body class="flex justify-center items-center bg-gray-800">
+  <div class="container  mx-auto mt-10 px-4  ">
+    <div class="max-w-md mx-auto">
+      <h1 class="text-3xl font-semibold text-center text-white mb-6">Weather App</h1>
+      <div class="weather-container bg-yellow-200 p-6 rounded-lg shadow-2xl">
+        <form id="weatherForm" class="flex flex-col items-center mb-4">
+          <input
+            type="text"
+            id="cityInput"
+            placeholder="Enter city name"
+            class="border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 w-full mb-4"
+          />
+          <button
+            type="submit"
+            class="bg-blue-500 text-white rounded-md px-4 py-2 w-full hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            Get Weather
+          </button>
+        </form>
+        <div class="suggestions"></div>
+        <div class="datetime text-lg font-semibold mb-4 text-center">
+          <div id="date" class="text-sm"></div>
+          <br />
+          <div id="time" class="text-3xl"></div>
+        </div>
+        <div class="location text-sm font-semibold mb-4 text-center"></div>
+        <div class="weather flex justify-center items-center text-lg">
+          <img class="weather-icon w-30 h-30 mr-4"/>
+        </div>
+        <div class="weather-info text-xl text-center mt-7">
+          <div class="temperature"></div>
+          <div class="description"></div>
+        </div>
+        <div id="hourlyForecast" class="text-sm font-semibold mt-10"></div>
+      </div>
+    </div>
+  </div>
+  <!-- Add Splide JS -->
+  <script src="https://unpkg.com/@splidejs/splide/dist/js/splide.min.js"></script>
+  <script>
+    const weatherIcons = {
+      Clear: "https://www.accuweather.com/images/weathericons/1.svg",
+      Clouds: "https://www.accuweather.com/images/weathericons/2.svg",
+      Rain: "https://www.accuweather.com/images/weathericons/3.svg",
+      Thunderstorm: "https://www.accuweather.com/images/weathericons/4.svg",
+      Snow: "https://www.accuweather.com/images/weathericons/5.svg",
+      Mist: "https://www.accuweather.com/images/weathericons/6.svg",
+      Fog: "https://www.accuweather.com/images/weathericons/7.svg",
+      Haze: "https://www.accuweather.com/images/weathericons/8.svg",
+      // Add more weather conditions and their corresponding image URLs as needed
+    };
+
+    // Function to update date and time
+    function updateDateTime(timezoneOffset) {
+      const now = new Date();
+      const localTime = new Date(now.getTime()); // Adjust time based on timezone offset
+      const dateOptions = {
+        weekday: "long",
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      };
+      const timeOptions = {
+        hour: "numeric",
+        minute: "numeric",
+        hour12: true,
+      };
+      const dateString = localTime.toLocaleDateString("en-US", dateOptions);
+      const timeString = localTime.toLocaleTimeString("en-US", timeOptions);
+      document.getElementById("date").textContent = dateString;
+      document.getElementById("time").textContent = timeString;
+    }
+
+    const apiKey = "117b3d6963142e46c13a0ef2ab4bb41d"; // Replace with your OpenWeatherMap API key
+    const cityListUrl =
+      "https://raw.githubusercontent.com/lutangar/cities.json/master/cities.json";
+    const apiUrl = "https://api.openweathermap.org/data/2.5/";
+
+    async function getCityList() {
+      const response = await fetch(cityListUrl);
+      const cities = await response.json();
+      return cities;
+    }
+
+    async function getWeather(city) {
+      const response = await fetch(
+        `${apiUrl}weather?q=${city}&appid=${apiKey}&units=metric`
+      );
+      const data = await response.json();
+      return data;
+    }
+
+    function displayWeather(weather) {
+      const location = document.querySelector(".location");
+      const temperature = document.querySelector(".temperature");
+      const description = document.querySelector(".description");
+      const weatherIcon = document.querySelector(".weather-icon");
+    const weatherContainer = document.querySelector(".weather-container");
+
+
+      location.textContent = `${weather.name}, ${weather.sys.country}`;
+      temperature.textContent = `${weather.main.temp}°C`;
+      description.textContent = weather.weather[0].description;
+
+      const weatherCondition = weather.weather[0].main;
+      const iconUrl = weatherIcons[weatherCondition];
+
+      // Update the weather icon image source
+      if (iconUrl) {
+        weatherIcon.src = iconUrl;
+      } else {
+        // If there's no specific image for the weather condition, use a default image or handle it as needed
+        weatherIcon.src = "default-image-url";
+      }
+
+     weatherContainer.classList.remove(
+        "bg-gradient-to-b", 
+        "from-yellow-400", "to-yellow-600", // Clear
+        "from-gray-400", "to-gray-600",     // Clouds
+        "from-blue-400", "to-blue-600",     // Rain
+        // Add more classes for other backgrounds if needed
+    );
+
+    // Add background classes based on weather condition
+    switch (weatherCondition) {
+        case "Clear":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-blue-500", "to-blue-800");
+            break;
+        case "Clouds":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-gray-500", "to-gray-800");
+            break;
+        case "Rain":
+        case "Drizzle":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-blue-300", "to-blue-600");
+            break;
+        case "Thunderstorm":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-gray-700", "to-black"); // Dark gray
+            break;
+        case "Snow":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-blue-200", "to-blue-400"); // White
+            break;
+        case "Mist":
+        case "Fog":
+        case "Haze":
+            weatherContainer.classList.add("bg-gradient-to-br", "from-gray-200", "to-gray-400"); // Light gray
+            break;
+        default:
+            weatherContainer.classList.add("bg-gray-200"); // Default background color
+            break;
+    }
+    }
+    function displaySuggestions(suggestions) {
+      const suggestionsContainer = document.getElementById("suggestions");
+      suggestionsContainer.innerHTML = "";
+      suggestions.forEach((city) => {
+        const suggestionElement = document.createElement("div");
+        suggestionElement.classList.add("suggestion");
+        suggestionElement.textContent = city.name;
+        suggestionElement.addEventListener("click", () => {
+          document.getElementById("cityInput").value = city.name;
+          suggestionsContainer.innerHTML = "";
+        });
+        suggestionsContainer.appendChild(suggestionElement);
+      });
+    }
+
+    async function getHourlyForecast(city) {
+      const response = await fetch(
+        `${apiUrl}forecast?q=${city}&appid=${apiKey}&units=metric`
+      );
+      const data = await response.json();
+      return data;
+    }
+
+    function displayHourlyForecast(hourlyForecast) {
+      // Clear previous forecast data
+      const splideList = document.createElement("ul");
+      splideList.classList.add("splide__list");
+      hourlyForecast.list.forEach((hour) => {
+        const time = new Date(hour.dt * 1000).toLocaleTimeString("en-US", {
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true,
+        });
+        const weatherCondition = hour.weather[0].main;
+        const iconUrl = weatherIcons[weatherCondition];
+
+        const listItem = document.createElement("li");
+        listItem.classList.add("splide__slide");
+        listItem.innerHTML = `
+          <div class="hourly-forecast-item flex flex-col items-center">
+            <img src="${iconUrl}" alt="${weatherCondition}" class="w-10 h-10">
+            <div class="m-1" >${hour.main.temp}°C</div>
+            <div>${time}</div>
+          </div>
+        `;
+        splideList.appendChild(listItem);
+      });
+
+      const hourlyForecastContainer = document.getElementById(
+        "hourlyForecast"
+      );
+      hourlyForecastContainer.innerHTML = "";
+      hourlyForecastContainer.appendChild(splideList);
+
+      // Initialize Splide
+      new Splide(hourlyForecastContainer, {
+        type: "carousel",
+        perPage: 3, // Change the number of slides per view according to your preference
+        gap: "1rem", // Adjust the gap between slides
+        pagination: false, // Optionally, enable pagination
+        breakpoints: {
+          768: {
+            perPage: 4, // Adjust the number of slides per view for larger screens
+          },
+        },
+      }).mount();
+    }
+
+    document
+      .getElementById("weatherForm")
+      .addEventListener("submit", async function (event) {
+        event.preventDefault();
+        const cityInput = document.getElementById("cityInput");
+        const city = cityInput.value.trim();
+        if (city) {
+          try {
+            const weather = await getWeather(city);
+            const timezoneOffset = weather.timezone; // Timezone offset in seconds
+            updateDateTime(timezoneOffset);
+            displayWeather(weather);
+
+            // Fetch and display hourly forecast
+            const hourlyForecast = await getHourlyForecast(city);
+            displayHourlyForecast(hourlyForecast);
+          } catch (error) {
+            console.log("Error fetching weather:", error);
+          }
+        } else {
+          alert("Please enter a city name.");
+        }
+      });
+
+  </script>
+</body>
+</html>
